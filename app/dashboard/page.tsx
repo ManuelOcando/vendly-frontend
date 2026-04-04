@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { api } from "@/lib/api"
-import { mockStats, mockWhatsAppStatus } from "@/lib/mock-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,41 +12,35 @@ import Link from "next/link"
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
   const [whatsappStatus, setWhatsappStatus] = useState<any>(null)
+  const [tenantSlug, setTenantSlug] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [hasTenant, setHasTenant] = useState(true)
 
   useEffect(() => {
     async function loadDashboardData() {
-      // Usar datos mock para desarrollo rápido
-      const isDevelopment = process.env.NODE_ENV === 'development'
-      
-      if (isDevelopment) {
-        // Simular carga rápida con datos mock
-        setTimeout(() => {
-          setStats(mockStats)
-          setWhatsappStatus(mockWhatsAppStatus)
-          setLoading(false)
-        }, 100)
-        return
-      }
-      
       try {
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
 
         if (session) {
-          // Cargar stats y WhatsApp status en paralelo
-          const [statsData, whatsappData] = await Promise.all([
+          // Cargar stats, WhatsApp status y tenant info en paralelo
+          const [statsData, whatsappData, tenantData] = await Promise.all([
             api("/api/v1/dashboard/stats", {
               token: session.access_token,
             }),
             api("/api/v1/dashboard/whatsapp/status", {
               token: session.access_token,
-            })
+            }),
+            api("/api/v1/tenants/me", {
+              token: session.access_token,
+            }).catch(() => null)
           ])
           
           setStats(statsData)
           setWhatsappStatus(whatsappData)
+          if (tenantData?.slug) {
+            setTenantSlug(tenantData.slug)
+          }
         }
       } catch (e: any) {
         console.error("Error cargando dashboard:", e)
@@ -249,7 +242,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/store/mi-tienda" target="_blank">
+            <Link href={`/store/${tenantSlug || 'mi-tienda'}`} target="_blank">
               <Button variant="outline" className="w-full justify-start">
                 <Package className="h-4 w-4 mr-2" />
                 Ver mi Tienda
