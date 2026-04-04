@@ -76,7 +76,7 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
       id: item.id,
       name: item.name,
       price: item.price,
-      image_url: item.image_url
+      image_url: item.images && item.images.length > 0 ? item.images[0] : undefined
     })
     toast({
       title: "Producto agregado",
