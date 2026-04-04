@@ -129,7 +129,10 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
                 )}
               </Button>
               
-              <CartDrawer />
+              <CartDrawer 
+                storeWhatsApp={store.whatsapp_number}
+                storeName={store.name}
+              />
             </div>
           </div>
         </div>

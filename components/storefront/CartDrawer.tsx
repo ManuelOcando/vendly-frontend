@@ -1,12 +1,61 @@
 "use client"
 
+import { useState } from "react"
 import { useCart } from "./CartContext"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
-import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingCart, User, Phone, MapPin } from "lucide-react"
 
-export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, removeItem, updateQuantity, total, itemCount } = useCart()
+interface CartDrawerProps {
+  storeWhatsApp?: string
+  storeName?: string
+}
+
+export default function CartDrawer({ storeWhatsApp, storeName }: CartDrawerProps) {
+  const { items, isOpen, setIsOpen, removeItem, updateQuantity, total, itemCount, clearCart } = useCart()
+  const [customerName, setCustomerName] = useState("")
+  const [customerPhone, setCustomerPhone] = useState("")
+  const [customerAddress, setCustomerAddress] = useState("")
+  const [showCheckout, setShowCheckout] = useState(false)
+
+  const generateWhatsAppMessage = () => {
+    const itemsList = items.map(item => 
+      `• ${item.quantity}x ${item.name} - $${(item.price * item.quantity).toFixed(2)}`
+    ).join("\n")
+    
+    return `¡Hola! Quiero hacer un pedido de ${storeName || "su tienda"}:
+
+${itemsList}
+
+*Total: $${total.toFixed(2)}*
+
+Mis datos:
+👤 ${customerName}
+📱 ${customerPhone}
+📍 ${customerAddress}`
+  }
+
+  const handleCheckout = () => {
+    if (!storeWhatsApp) {
+      alert("Esta tienda no tiene WhatsApp configurado")
+      return
+    }
+    
+    const message = encodeURIComponent(generateWhatsAppMessage())
+    const phone = storeWhatsApp.replace(/\D/g, "")
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank")
+    
+    // Clear cart after checkout
+    clearCart()
+    setIsOpen(false)
+    setShowCheckout(false)
+    setCustomerName("")
+    setCustomerPhone("")
+    setCustomerAddress("")
+  }
+
+  const canCheckout = customerName.trim() && customerPhone.trim()
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -14,15 +63,69 @@ export default function CartDrawer() {
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Tu Carrito ({itemCount})
+            {showCheckout ? "Finalizar Pedido" : `Tu Carrito (${itemCount})`}
           </SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
-          {items.length === 0 ? (
+          {items.length === 0 && !showCheckout ? (
             <div className="text-center py-8 text-gray-500">
               <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p>Tu carrito está vacío</p>
+            </div>
+          ) : showCheckout ? (
+            <div className="space-y-4">
+              {/* Resumen del pedido */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="font-medium mb-2">Resumen del pedido:</p>
+                <div className="space-y-1 text-sm">
+                  {items.map(item => (
+                    <div key={item.id} className="flex justify-between">
+                      <span>{item.quantity}x {item.name}</span>
+                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t mt-2 pt-2 font-bold flex justify-between">
+                  <span>Total:</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Datos del cliente */}
+              <div className="space-y-3">
+                <p className="font-medium">Tus datos:</p>
+                
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Tu nombre completo *"
+                    value={customerName}
+                    onChange={e => setCustomerName(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Tu número de teléfono *"
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Tu dirección de entrega"
+                    value={customerAddress}
+                    onChange={e => setCustomerAddress(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -72,24 +175,47 @@ export default function CartDrawer() {
 
         <SheetFooter className="border-t pt-4">
           <div className="w-full space-y-3">
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            <Button 
-              className="w-full" 
-              size="lg"
-              disabled={items.length === 0}
-            >
-              Finalizar Pedido por WhatsApp
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => setIsOpen(false)}
-            >
-              Seguir Comprando
-            </Button>
+            {showCheckout ? (
+              <>
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700" 
+                  size="lg"
+                  disabled={!canCheckout || items.length === 0}
+                  onClick={handleCheckout}
+                >
+                  💬 Enviar pedido por WhatsApp
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setShowCheckout(false)}
+                >
+                  ← Volver al carrito
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  disabled={items.length === 0}
+                  onClick={() => setShowCheckout(true)}
+                >
+                  Finalizar Pedido
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Seguir Comprando
+                </Button>
+              </>
+            )}
           </div>
         </SheetFooter>
       </SheetContent>
