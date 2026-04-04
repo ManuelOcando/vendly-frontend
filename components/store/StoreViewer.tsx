@@ -5,13 +5,13 @@ import { Search, ShoppingCart, Phone, Star, Clock, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
-import { Store, StoreItem, Category, CartItem } from "@/lib/store-service"
+import { Store, StoreItem, Category } from "@/lib/store-service"
 import StoreItemCard from "./StoreItemCard"
-import CartManager from "./CartManager"
+import { useCart } from "@/components/storefront/CartContext"
+import CartDrawer from "@/components/storefront/CartDrawer"
 
 interface StoreViewerProps {
   store: Store
@@ -23,12 +23,11 @@ interface StoreViewerProps {
 export default function StoreViewer({ store, initialItems, categories, slug }: StoreViewerProps) {
   const [items, setItems] = useState<StoreItem[]>(initialItems)
   const [filteredItems, setFilteredItems] = useState<StoreItem[]>(initialItems)
-  const [cart, setCart] = useState<{ items: CartItem[], total: number }>({ items: [], total: 0 })
-  const [isCartOpen, setIsCartOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("featured")
   const { toast } = useToast()
+  const { addItem, itemCount, setIsOpen } = useCart()
 
   // Filtrar y ordenar items
   useEffect(() => {
@@ -72,58 +71,17 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
     setFilteredItems(filtered)
   }, [items, searchTerm, selectedCategory, sortBy])
 
-  const addToCart = (item: StoreItem) => {
-    const existingItem = cart.items.find(cartItem => cartItem.item_id === item.id)
-    
-    if (existingItem) {
-      // Incrementar cantidad
-      const updatedItems = cart.items.map(cartItem =>
-        cartItem.item_id === item.id
-          ? { ...cartItem, quantity: cartItem.quantity + 1 }
-          : cartItem
-      )
-      updateCart(updatedItems)
-    } else {
-      // Agregar nuevo item
-      const newItem: CartItem = {
-        item_id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: 1
-      }
-      updateCart([...cart.items, newItem])
-    }
-
+  const handleAddToCart = (item: StoreItem) => {
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image_url: item.image_url
+    })
     toast({
       title: "Producto agregado",
       description: `${item.name} se ha agregado al carrito`,
     })
-  }
-
-  const updateCart = (items: CartItem[]) => {
-    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    setCart({ items, total })
-  }
-
-  const removeFromCart = (itemId: string) => {
-    const updatedItems = cart.items.filter(item => item.item_id !== itemId)
-    updateCart(updatedItems)
-  }
-
-  const updateQuantity = (itemId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(itemId)
-      return
-    }
-
-    const updatedItems = cart.items.map(item =>
-      item.item_id === itemId ? { ...item, quantity } : item
-    )
-    updateCart(updatedItems)
-  }
-
-  const getTotalItems = () => {
-    return cart.items.reduce((sum, item) => sum + item.quantity, 0)
   }
 
   return (
@@ -156,34 +114,22 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
                 </Button>
               )}
               
-              <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="relative">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Carrito
-                    {getTotalItems() > 0 && (
-                      <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs">
-                        {getTotalItems()}
-                      </Badge>
-                    )}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Carrito de Compras</SheetTitle>
-                    <SheetDescription>
-                      Revisa tus productos antes de finalizar el pedido
-                    </SheetDescription>
-                  </SheetHeader>
-                  <CartManager
-                    cart={cart}
-                    onUpdateCart={updateCart}
-                    onRemoveItem={removeFromCart}
-                    onUpdateQuantity={updateQuantity}
-                    storeSlug={slug}
-                  />
-                </SheetContent>
-              </Sheet>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="relative"
+                onClick={() => setIsOpen(true)}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Carrito
+                {itemCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs">
+                    {itemCount}
+                  </Badge>
+                )}
+              </Button>
+              
+              <CartDrawer />
             </div>
           </div>
         </div>
@@ -249,8 +195,8 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
               <StoreItemCard
                 key={item.id}
                 item={item}
-                onAddToCart={addToCart}
-                isInCart={cart.items.some(cartItem => cartItem.item_id === item.id)}
+                onAddToCart={handleAddToCart}
+                isInCart={false}
               />
             ))}
           </div>

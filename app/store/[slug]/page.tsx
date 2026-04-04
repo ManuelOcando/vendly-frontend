@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import StoreViewer from "@/components/store/StoreViewer"
 import { getStoreData, getStoreItems, getStoreCategories } from "@/lib/store-service"
+import { CartProvider } from "@/components/storefront/CartContext"
 
 interface StorePageProps {
   params: {
@@ -24,12 +25,14 @@ export default async function StorePage({ params }: StorePageProps) {
     }
 
     return (
-      <StoreViewer 
-        store={storeData}
-        initialItems={items}
-        categories={categories}
-        slug={slug}
-      />
+      <CartProvider>
+        <StoreViewer 
+          store={storeData}
+          initialItems={items}
+          categories={categories}
+          slug={slug}
+        />
+      </CartProvider>
     )
   } catch (error) {
     console.error("Error loading store:", error)
