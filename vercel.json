@@ -4,6 +4,7 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "env": {
+    "NODE_ENV": "production",
     "NEXT_PUBLIC_API_URL": "https://vendly-backend-uuos.onrender.com",
     "NEXT_PUBLIC_SUPABASE_URL": "https://slspihwznliibdecdtkj.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc3BpaHd6bmxpaWJkZWNkdGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTExNzEsImV4cCI6MjA5MDY4NzE3MX0.fmHZDgs9YSoQCJ8anlIh1kxtrltu_5olZvBnpYTSejE"

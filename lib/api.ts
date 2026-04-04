@@ -21,9 +21,6 @@ export async function api<T = any>(
 ): Promise<T> {
   const { token, headers: customHeaders, ...fetchOptions } = options
 
-  console.log(`🔍 API Call: ${API_BASE_URL}${endpoint}`)
-  console.log(`🔍 Environment NEXT_PUBLIC_API_URL:`, process.env.NEXT_PUBLIC_API_URL)
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(customHeaders as Record<string, string>),
