@@ -4,6 +4,17 @@ interface FetchOptions extends RequestInit {
   token?: string
 }
 
+class APIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public data?: any
+  ) {
+    super(message)
+    this.name = 'APIError'
+  }
+}
+
 export async function api<T = any>(
   endpoint: string,
   options: FetchOptions = {}
@@ -19,15 +30,45 @@ export async function api<T = any>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  })
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+    })
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Error desconocido' }))
-    throw new Error(error.detail || `Error ${response.status}`)
+    if (!response.ok) {
+      let errorData
+      try {
+        errorData = await response.json()
+      } catch {
+        errorData = { detail: `Error ${response.status}: ${response.statusText}` }
+      }
+      throw new APIError(
+        errorData.detail || `Error ${response.status}`,
+        response.status,
+        errorData
+      )
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error
+    }
+    
+    // Network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new APIError(
+        'No se pudo conectar con el servidor. Verifica tu conexión a internet.',
+        0
+      )
+    }
+    
+    throw new APIError(
+      error instanceof Error ? error.message : 'Error desconocido',
+      0
+    )
   }
-
-  return response.json()
 }
+
+export { APIError }

@@ -3,249 +3,269 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { api } from "@/lib/api"
+import { mockStats, mockWhatsAppStatus } from "@/lib/mock-data"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Phone, QrCode, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react"
+import Link from "next/link"
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
-  pending_payment:    { label: "Esperando pago",     color: "bg-yellow-100 text-yellow-800", emoji: "⏳" },
-  payment_submitted:  { label: "Comprobante enviado", color: "bg-blue-100 text-blue-800",    emoji: "📤" },
-  payment_confirmed:  { label: "Pago confirmado",     color: "bg-green-100 text-green-800",  emoji: "✅" },
-  processing:         { label: "En proceso",          color: "bg-purple-100 text-purple-800", emoji: "🔄" },
-  ready:              { label: "Listo",               color: "bg-indigo-100 text-indigo-800", emoji: "📦" },
-  delivered:          { label: "Entregado",           color: "bg-gray-100 text-gray-800",    emoji: "🎉" },
-  cancelled:          { label: "Cancelado",           color: "bg-red-100 text-red-800",      emoji: "❌" },
-}
-
-const STATUS_FLOW: Record<string, string> = {
-  pending_payment:   "payment_confirmed",
-  payment_submitted: "payment_confirmed",
-  payment_confirmed: "processing",
-  processing:        "ready",
-  ready:             "delivered",
-}
-
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([])
+export default function DashboardPage() {
+  const [stats, setStats] = useState<any>(null)
+  const [whatsappStatus, setWhatsappStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [token, setToken] = useState<string | null>(null)
-  const [filter, setFilter] = useState("all")
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [hasTenant, setHasTenant] = useState(true)
 
   useEffect(() => {
-    loadOrders()
+    async function loadDashboardData() {
+      // Usar datos mock para desarrollo rápido
+      const isDevelopment = process.env.NODE_ENV === 'development'
+      
+      if (isDevelopment) {
+        // Simular carga rápida con datos mock
+        setTimeout(() => {
+          setStats(mockStats)
+          setWhatsappStatus(mockWhatsAppStatus)
+          setLoading(false)
+        }, 100)
+        return
+      }
+      
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (session) {
+          // Cargar stats y WhatsApp status en paralelo
+          const [statsData, whatsappData] = await Promise.all([
+            api("/api/v1/dashboard/stats", {
+              token: session.access_token,
+            }),
+            api("/api/v1/dashboard/whatsapp/status", {
+              token: session.access_token,
+            })
+          ])
+          
+          setStats(statsData)
+          setWhatsappStatus(whatsappData)
+        }
+      } catch (e: any) {
+        console.error("Error cargando dashboard:", e)
+        if (e.message && e.message.includes("No tienes un negocio configurado")) {
+          setHasTenant(false)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
   }, [])
 
-  async function loadOrders() {
-    try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      setToken(session.access_token)
-
-      const data = await api("/api/v1/orders", {
-        token: session.access_token,
-      })
-      setOrders(data)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+  if (loading) {
+    return <p className="text-gray-500">Cargando dashboard...</p>
   }
 
-  async function updateStatus(orderId: string, newStatus: string) {
-    if (!token) return
-    setUpdatingId(orderId)
-    try {
-      await api(`/api/v1/orders/${orderId}/status`, {
-        method: "PUT",
-        token,
-        body: JSON.stringify({ status: newStatus }),
-      })
-      await loadOrders()
-    } catch (e: any) {
-      alert("Error: " + e.message)
-    } finally {
-      setUpdatingId(null)
-    }
+  // Mostrar mensaje si no tiene tenant configurado
+  if (!hasTenant) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="text-red-800 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Configuración Incompleta
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-red-700">
+              No tienes un negocio configurado. Para poder agregar productos y recibir pedidos, 
+              necesitas completar el registro de tu negocio.
+            </p>
+            <div className="flex gap-2">
+              <Link href="/register">
+                <Button>
+                  Completar Registro del Negocio
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  async function cancelOrder(orderId: string) {
-    if (!confirm("¿Cancelar este pedido?")) return
-    await updateStatus(orderId, "cancelled")
-  }
-
-  const filters = [
-    { key: "all",              label: "Todos" },
-    { key: "pending_payment",  label: "⏳ Pendientes" },
-    { key: "payment_submitted",label: "📤 Por confirmar" },
-    { key: "payment_confirmed",label: "✅ Confirmados" },
-    { key: "processing",       label: "🔄 En proceso" },
-    { key: "delivered",        label: "🎉 Entregados" },
+  const cards = [
+    { 
+      title: "Productos Activos", 
+      value: stats?.total_products || 0, 
+      icon: Package,
+      color: "text-blue-600"
+    },
+    { 
+      title: "Pedidos Totales", 
+      value: stats?.total_orders || 0, 
+      icon: ShoppingCart,
+      color: "text-green-600"
+    },
+    { 
+      title: "Pedidos Pendientes", 
+      value: stats?.pending_orders || 0, 
+      icon: AlertTriangle,
+      color: "text-yellow-600"
+    },
+    { 
+      title: "Ingresos Totales", 
+      value: `$${(stats?.total_revenue || 0).toFixed(2)}`, 
+      icon: DollarSign,
+      color: "text-purple-600"
+    },
   ]
 
-  const filteredOrders = filter === "all"
-    ? orders
-    : orders.filter(o => o.status === filter)
-
-  if (loading) return <p className="text-gray-500">Cargando pedidos...</p>
-
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Pedidos</h1>
-        <Button variant="outline" onClick={loadOrders} size="sm">
-          🔄 Actualizar
-        </Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex gap-2">
+          <Link href="/dashboard/orders">
+            <Button variant="outline">Ver Pedidos</Button>
+          </Link>
+          <Link href="/dashboard/products">
+            <Button variant="outline">Gestionar Productos</Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {filters.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              filter === f.key
-                ? "bg-indigo-600 text-white"
-                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {f.label}
-          </button>
+      {/* Estado de WhatsApp */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Estado de WhatsApp
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {whatsappStatus?.connected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Conectado
+                </Badge>
+                <span className="text-sm text-gray-600">
+                  Número: {whatsappStatus.active_connection?.phone_number}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Tu bot está activo y recibiendo mensajes.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="destructive">
+                  Desconectado
+                </Badge>
+                <span className="text-sm text-gray-600">
+                  No hay conexión activa
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm">
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Conectar WhatsApp
+                </Button>
+                <Button variant="outline" size="sm">
+                  Ver Instrucciones
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500">
+                Conecta tu número de WhatsApp para empezar a recibir pedidos automáticos.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tarjetas de estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((card) => (
+          <Card key={card.title}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                {card.title}
+              </CardTitle>
+              <card.icon className={`h-4 w-4 ${card.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {filteredOrders.length === 0 ? (
+      {/* Alertas de stock bajo */}
+      {stats?.low_stock_items && stats.low_stock_items.length > 0 && (
         <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-4xl mb-3">📋</p>
-            <p className="text-gray-500 text-lg">No hay pedidos aquí</p>
-            <p className="text-gray-400 text-sm mt-2">
-              Los pedidos aparecerán cuando los clientes compren
-            </p>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              Stock Bajo - Acción Requerida
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.low_stock_items.map((item: any) => (
+                <div key={item.id} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div>
+                    <span className="font-medium">{item.name}</span>
+                    <p className="text-sm text-gray-600">
+                      Quedan {item.stock_quantity} unidades
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-yellow-700 border-yellow-300">
+                    Bajo
+                  </Badge>
+                </div>
+              ))}
+              <div className="pt-2">
+                <Link href="/dashboard/products">
+                  <Button variant="outline" size="sm">
+                    Actualizar Stock
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredOrders.map(order => {
-            const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending_payment
-            const nextStatus = STATUS_FLOW[order.status]
-            const nextStatusInfo = nextStatus ? STATUS_CONFIG[nextStatus] : null
-            const isUpdating = updatingId === order.id
-
-            return (
-              <Card key={order.id}>
-                <CardContent className="p-4">
-                  {/* Header del pedido */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">
-                          #{order.order_number}
-                        </span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusInfo.color}`}>
-                          {statusInfo.emoji} {statusInfo.label}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {new Date(order.created_at).toLocaleString("es-VE", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                    <span className="text-xl font-bold text-indigo-600">
-                      ${parseFloat(order.total || 0).toFixed(2)}
-                    </span>
-                  </div>
-
-                  {/* Info del cliente */}
-                  {(order.customer_name || order.customer_phone) && (
-                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                      <p className="text-sm font-medium text-gray-700">
-                        👤 {order.customer_name || "Cliente"}
-                      </p>
-                      {order.customer_phone && (
-                        <a
-                          href={`https://wa.me/${order.customer_phone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-green-600 hover:underline"
-                        >
-                          📱 {order.customer_phone}
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Comprobante de pago */}
-                  {order.payment_proof_url && (
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-gray-600 mb-1">
-                        📎 Comprobante de pago:
-                      </p>
-                      <a
-                        href={order.payment_proof_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-indigo-600 hover:underline"
-                      >
-                        Ver comprobante →
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Acciones */}
-                  {order.status !== "delivered" && order.status !== "cancelled" && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t">
-                      {/* Botón acción principal */}
-                      {nextStatusInfo && (
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          disabled={isUpdating}
-                          onClick={() => updateStatus(order.id, nextStatus)}
-                        >
-                          {isUpdating ? "..." : `${nextStatusInfo.emoji} ${nextStatusInfo.label}`}
-                        </Button>
-                      )}
-
-                      {/* WhatsApp al cliente */}
-                      {order.customer_phone && (
-                        <a
-                          href={`https://wa.me/${order.customer_phone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button size="sm" variant="outline">
-                            💬 Escribir
-                          </Button>
-                        </a>
-                      )}
-
-                      {/* Cancelar */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-500 border-red-200 hover:bg-red-50"
-                        disabled={isUpdating}
-                        onClick={() => cancelOrder(order.id)}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
       )}
+
+      {/* Acciones rápidas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Acciones Rápidas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/store/mi-tienda" target="_blank">
+              <Button variant="outline" className="w-full justify-start">
+                <Package className="h-4 w-4 mr-2" />
+                Ver mi Tienda
+              </Button>
+            </Link>
+            <Button variant="outline" className="w-full justify-start">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Ver Reportes
+            </Button>
+            <Button variant="outline" className="w-full justify-start">
+              <Phone className="h-4 w-4 mr-2" />
+              Configurar Bot
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

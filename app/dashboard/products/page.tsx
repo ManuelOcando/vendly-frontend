@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { api } from "@/lib/api"
+import { mockItems } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,7 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [hasTenant, setHasTenant] = useState(true)
 
   // Form state
   const [name, setName] = useState("")
@@ -29,6 +31,18 @@ export default function ProductsPage() {
   }, [])
 
   async function loadItems() {
+    // Usar datos mock para desarrollo rápido
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      // Simular carga rápida con datos mock
+      setTimeout(() => {
+        setItems(mockItems)
+        setLoading(false)
+      }, 100)
+      return
+    }
+    
     try {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -37,8 +51,11 @@ export default function ProductsPage() {
         const data = await api("/api/v1/items", { token: session.access_token })
         setItems(data)
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error:", e)
+      if (e.message && e.message.includes("No tienes un negocio configurado")) {
+        setHasTenant(false)
+      }
     } finally {
       setLoading(false)
     }
@@ -66,6 +83,42 @@ export default function ProductsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    // Datos del formulario
+    const newItem = {
+      id: editingItem?.id || Date.now().toString(),
+      name,
+      description,
+      price: parseFloat(price),
+      stock_quantity: parseInt(stock) || 0,
+      type,
+      currency: "USD",
+      low_stock_threshold: 5,
+      track_stock: type === "product",
+      is_active: true,
+      is_featured: false,
+      images: [],
+      total_sold: 0,
+      likes_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      service_duration_minutes: type === "service" ? 30 : null
+    }
+
+    if (isDevelopment) {
+      // Operación instantánea en desarrollo
+      if (editingItem) {
+        setItems(items.map(item => item.id === editingItem.id ? newItem : item))
+      } else {
+        setItems([...items, newItem])
+      }
+      resetForm()
+      return
+    }
+
+    // Operación real en producción
     if (!token) return
 
     const body = {
@@ -78,20 +131,21 @@ export default function ProductsPage() {
 
     try {
       if (editingItem) {
-        await api(`/api/v1/items/${editingItem.id}`, {
+        const updatedItem = await api(`/api/v1/items/${editingItem.id}`, {
           method: "PUT",
           token,
           body: JSON.stringify(body),
         })
+        setItems(items.map(item => item.id === editingItem.id ? updatedItem : item))
       } else {
-        await api("/api/v1/items", {
+        const createdItem = await api("/api/v1/items", {
           method: "POST",
           token,
           body: JSON.stringify(body),
         })
+        setItems([...items, createdItem])
       }
       resetForm()
-      loadItems()
     } catch (e: any) {
       alert("Error: " + e.message)
     }
@@ -99,17 +153,58 @@ export default function ProductsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este producto?")) return
+    
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      // Eliminación instantánea en desarrollo
+      setItems(items.filter(item => item.id !== id))
+      return
+    }
+
+    // Operación real en producción
     if (!token) return
 
     try {
       await api(`/api/v1/items/${id}`, { method: "DELETE", token })
-      loadItems()
+      setItems(items.filter(item => item.id !== id))
     } catch (e: any) {
       alert("Error: " + e.message)
     }
   }
 
   if (loading) return <p className="text-gray-500">Cargando productos...</p>
+
+  // Mostrar mensaje si no tiene tenant configurado
+  if (!hasTenant) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="text-red-800 flex items-center gap-2">
+              ⚠️ Configuración Incompleta
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-red-700">
+              No tienes un negocio configurado. Para poder agregar productos, 
+              necesitas completar el registro de tu negocio primero.
+            </p>
+            <div className="flex gap-2">
+              <a href="/register">
+                <Button>
+                  Completar Registro del Negocio
+                </Button>
+              </a>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div>
