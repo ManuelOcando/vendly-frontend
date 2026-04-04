@@ -245,10 +245,18 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href={`/store/${tenantSlug || 'mi-tienda'}`} target="_blank">
-                  <Button variant="outline" className="w-full justify-start">
+                <Link 
+                  href={`/store/${tenantSlug || 'demo'}`} 
+                  target="_blank"
+                  className={!tenantSlug ? 'pointer-events-none' : ''}
+                >
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    disabled={!tenantSlug}
+                  >
                     <Package className="h-4 w-4 mr-2" />
-                    Ver mi Tienda
+                    {tenantSlug ? 'Ver mi Tienda' : 'Cargando tienda...'}
                   </Button>
                 </Link>
                 <Button variant="outline" className="w-full justify-start">
