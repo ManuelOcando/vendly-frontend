@@ -31,18 +31,6 @@ export default function ProductsPage() {
   }, [])
 
   async function loadItems() {
-    // Usar datos mock para desarrollo rápido
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    
-    if (isDevelopment) {
-      // Simular carga rápida con datos mock
-      setTimeout(() => {
-        setItems(mockItems)
-        setLoading(false)
-      }, 100)
-      return
-    }
-    
     try {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -84,40 +72,6 @@ export default function ProductsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    
-    // Datos del formulario
-    const newItem = {
-      id: editingItem?.id || Date.now().toString(),
-      name,
-      description,
-      price: parseFloat(price),
-      stock_quantity: parseInt(stock) || 0,
-      type,
-      currency: "USD",
-      low_stock_threshold: 5,
-      track_stock: type === "product",
-      is_active: true,
-      is_featured: false,
-      images: [],
-      total_sold: 0,
-      likes_count: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      service_duration_minutes: type === "service" ? 30 : null
-    }
-
-    if (isDevelopment) {
-      // Operación instantánea en desarrollo
-      if (editingItem) {
-        setItems(items.map(item => item.id === editingItem.id ? newItem : item))
-      } else {
-        setItems([...items, newItem])
-      }
-      resetForm()
-      return
-    }
-
     // Operación real en producción
     if (!token) return
 
@@ -154,14 +108,6 @@ export default function ProductsPage() {
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este producto?")) return
     
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    
-    if (isDevelopment) {
-      // Eliminación instantánea en desarrollo
-      setItems(items.filter(item => item.id !== id))
-      return
-    }
-
     // Operación real en producción
     if (!token) return
 
