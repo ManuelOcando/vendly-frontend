@@ -81,6 +81,7 @@ export default function ProductsPage() {
       price: parseFloat(price),
       stock_quantity: parseInt(stock) || 0,
       type,
+      currency: "USD",
     }
 
     try {
