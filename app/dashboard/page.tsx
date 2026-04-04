@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Phone, QrCode, TrendingUp, Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react"
 import Link from "next/link"
+import QRGenerator from "@/components/dashboard/QRGenerator"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
@@ -235,30 +236,43 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Acciones rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Acciones Rápidas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href={`/store/${tenantSlug || 'mi-tienda'}`} target="_blank">
-              <Button variant="outline" className="w-full justify-start">
-                <Package className="h-4 w-4 mr-2" />
-                Ver mi Tienda
-              </Button>
-            </Link>
-            <Button variant="outline" className="w-full justify-start">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Ver Reportes
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              <Phone className="h-4 w-4 mr-2" />
-              Configurar Bot
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Acciones rápidas y QR */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Acciones Rápidas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link href={`/store/${tenantSlug || 'mi-tienda'}`} target="_blank">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Package className="h-4 w-4 mr-2" />
+                    Ver mi Tienda
+                  </Button>
+                </Link>
+                <Button variant="outline" className="w-full justify-start">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Ver Reportes
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Phone className="h-4 w-4 mr-2" />
+                  Configurar Bot
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div>
+          {tenantSlug && (
+            <QRGenerator 
+              storeUrl={`https://vendly-frontend.vercel.app/store/${tenantSlug}`}
+              storeName={stats?.store_name || "Mi Tienda"}
+            />
+          )}
+        </div>
+      </div>
     </div>
   )
 }
