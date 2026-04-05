@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { Upload, X, ImageIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { api } from "@/lib/api"
+import { createClient } from "@/lib/supabase/client"
 
 interface ImageUploaderProps {
   productId: string
@@ -68,19 +68,24 @@ export default function ImageUploader({
 
     setUploading(true)
     try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        throw new Error("No hay sesión activa. Inicia sesión nuevamente.")
+      }
+
       const formData = new FormData()
       validFiles.forEach(file => formData.append("files", file))
       formData.append("product_id", productId)
-
-      const session = localStorage.getItem("vendly_session")
-      const token = session ? JSON.parse(session).access_token : null
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/images`,
         {
           method: "POST",
           headers: {
-            Authorization: token ? `Bearer ${token}` : "",
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
         }
