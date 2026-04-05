@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, ChevronLeft, ChevronRight, ShoppingCart, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { StoreItem } from "@/lib/store-service"
 
@@ -25,7 +24,20 @@ export default function ProductDetailModal({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [imageError, setImageError] = useState(false)
 
-  if (!item) return null
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentImageIndex(0)
+      setImageError(false)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen])
+
+  if (!item || !isOpen) return null
 
   const images = item.images && item.images.length > 0 ? item.images : []
   const hasMultipleImages = images.length > 1
@@ -62,21 +74,45 @@ export default function ProductDetailModal({
   const stockStatus = getStockStatus()
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[98vw] max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle className="text-xl font-semibold truncate">{item.name}</DialogTitle>
-        </DialogHeader>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      
+      {/* Modal */}
+      <div 
+        className="relative bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ 
+          width: '100%',
+          maxWidth: '1200px',
+          height: 'auto',
+          maxHeight: '90vh'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-white shrink-0">
+          <h2 className="text-xl font-semibold truncate pr-4">{item.name}</h2>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        <div className="flex flex-col lg:flex-row h-[calc(90vh-70px)]">
-          {/* Image Section - Takes more space */}
-          <div className="relative lg:w-[65%] w-full bg-gray-50 flex items-center justify-center p-4 lg:p-8 min-h-[300px] lg:min-h-0">
+        {/* Content */}
+        <div className="flex flex-col lg:flex-row overflow-hidden" style={{ minHeight: '500px' }}>
+          {/* Image Section */}
+          <div className="relative lg:w-[60%] w-full bg-gray-50 flex items-center justify-center p-6 min-h-[300px] lg:min-h-[500px]">
             {images.length > 0 && !imageError ? (
               <>
                 <img
                   src={images[currentImageIndex]}
                   alt={item.name}
-                  className="w-full h-full lg:max-h-[70vh] max-h-[250px] object-contain rounded-lg"
+                  className="max-w-full max-h-[400px] lg:max-h-[600px] object-contain"
                   onError={() => setImageError(true)}
                 />
                 
@@ -85,28 +121,28 @@ export default function ProductDetailModal({
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full hover:bg-white transition-colors"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white shadow-lg rounded-full hover:bg-gray-50 transition-colors"
                     >
-                      <ChevronLeft className="h-5 w-5" />
+                      <ChevronLeft className="h-6 w-6" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full hover:bg-white transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white shadow-lg rounded-full hover:bg-gray-50 transition-colors"
                     >
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-6 w-6" />
                     </button>
                   </>
                 )}
 
                 {/* Image Indicators */}
                 {hasMultipleImages && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                     {images.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
-                        className={`w-2 h-2 rounded-full transition-colors ${
-                          index === currentImageIndex ? "bg-white" : "bg-white/50"
+                        className={`w-3 h-3 rounded-full transition-colors ${
+                          index === currentImageIndex ? "bg-gray-800" : "bg-gray-400"
                         }`}
                       />
                     ))}
@@ -115,21 +151,22 @@ export default function ProductDetailModal({
 
                 {/* Image Counter */}
                 {hasMultipleImages && (
-                  <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                  <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/70 text-white text-sm rounded-full">
                     {currentImageIndex + 1} / {images.length}
                   </div>
                 )}
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-16 w-16 text-gray-400" />
+              <div className="flex flex-col items-center justify-center text-gray-400">
+                <Package className="h-24 w-24 mb-4" />
+                <p className="text-lg">Sin imagen</p>
               </div>
             )}
           </div>
 
-          {/* Product Info - Takes less space */}
-          <div className="lg:w-[35%] w-full p-6 flex flex-col bg-white border-l overflow-y-auto">
-            <div className="space-y-4">
+          {/* Product Info */}
+          <div className="lg:w-[40%] w-full p-6 lg:p-8 flex flex-col bg-white border-l overflow-y-auto">
+            <div className="space-y-5">
               {/* Badges */}
               <div className="flex flex-wrap gap-2">
                 {item.is_featured && (
@@ -144,39 +181,45 @@ export default function ProductDetailModal({
               </div>
 
               {/* Price */}
-              <div>
-                <span className="text-3xl font-bold text-gray-900">
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-gray-900">
                   {formatPrice(item.price)}
                 </span>
                 {item.currency !== 'VES' && (
-                  <span className="text-sm text-gray-500 ml-2">{item.currency}</span>
+                  <span className="text-gray-500">{item.currency}</span>
                 )}
               </div>
 
               {/* Description */}
               {item.description && (
-                <p className="text-gray-600">{item.description}</p>
+                <p className="text-gray-600 text-lg leading-relaxed">{item.description}</p>
               )}
 
               {/* Stock */}
-              <div className="text-sm text-gray-500 space-y-1">
+              <div className="space-y-2 text-gray-500">
                 {item.track_stock && (
-                  <p>Stock: {item.stock_quantity} unidades</p>
+                  <p className="flex items-center gap-2">
+                    <span className="font-medium text-gray-700">Stock:</span> 
+                    {item.stock_quantity} unidades
+                  </p>
                 )}
                 {item.total_sold > 0 && (
-                  <p>{item.total_sold} vendidos</p>
+                  <p className="flex items-center gap-2">
+                    <span className="font-medium text-gray-700">Vendidos:</span> 
+                    {item.total_sold}
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Button */}
-            <div className="pt-6 mt-auto">
+            {/* Button - Always at bottom */}
+            <div className="pt-8 mt-auto">
               <Button
                 onClick={() => onAddToCart(item)}
                 disabled={stockStatus?.text === "Agotado" || isInCart}
-                className="w-full h-12"
+                className="w-full h-14 text-lg font-semibold"
               >
-              <ShoppingCart className="h-5 w-5 mr-2" />
+                <ShoppingCart className="h-5 w-5 mr-2" />
                 {isInCart 
                   ? "✓ En carrito" 
                   : stockStatus?.text === "Agotado" 
@@ -187,7 +230,7 @@ export default function ProductDetailModal({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
