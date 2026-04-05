@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import ImageUploader from "@/components/dashboard/ImageUploader"
 import { Badge } from "@/components/ui/badge"
 
 export default function ProductsPage() {
@@ -25,6 +26,7 @@ export default function ProductsPage() {
   const [price, setPrice] = useState("")
   const [stock, setStock] = useState("")
   const [type, setType] = useState("product")
+  const [images, setImages] = useState<string[]>([])
 
   useEffect(() => {
     loadItems()
@@ -55,6 +57,7 @@ export default function ProductsPage() {
     setPrice("")
     setStock("")
     setType("product")
+    setImages([])
     setEditingItem(null)
     setShowForm(false)
   }
@@ -65,6 +68,7 @@ export default function ProductsPage() {
     setPrice(item.price.toString())
     setStock((item.stock_quantity || 0).toString())
     setType(item.type)
+    setImages(item.images || [])
     setEditingItem(item)
     setShowForm(true)
   }
@@ -82,6 +86,7 @@ export default function ProductsPage() {
       stock_quantity: parseInt(stock) || 0,
       type,
       currency: "USD",
+      images,
     }
 
     try {
@@ -193,6 +198,15 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe tu producto..." />
+              </div>
+              <div className="space-y-2">
+                <Label>Imágenes del Producto (máx 5)</Label>
+                <ImageUploader
+                  productId={editingItem?.id || "new"}
+                  existingImages={images}
+                  onImagesChange={setImages}
+                  maxImages={5}
+                />
               </div>
               <Button type="submit">
                 {editingItem ? "Guardar Cambios" : "Crear Producto"}
