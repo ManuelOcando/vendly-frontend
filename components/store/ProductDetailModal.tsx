@@ -63,20 +63,20 @@ export default function ProductDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[85vh] overflow-hidden p-0">
-        <DialogHeader className="px-8 py-5 border-b shrink-0">
-          <DialogTitle className="text-2xl font-semibold">{item.name}</DialogTitle>
+      <DialogContent className="max-w-7xl w-[98vw] max-h-[90vh] overflow-hidden p-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <DialogTitle className="text-xl font-semibold truncate">{item.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col md:flex-row h-[calc(85vh-80px)]">
-          {/* Image Section - 50% */}
-          <div className="relative md:w-1/2 w-full bg-gray-50 flex items-center justify-center p-8">
+        <div className="flex flex-col lg:flex-row h-[calc(90vh-70px)]">
+          {/* Image Section - Takes more space */}
+          <div className="relative lg:w-[65%] w-full bg-gray-50 flex items-center justify-center p-4 lg:p-8 min-h-[300px] lg:min-h-0">
             {images.length > 0 && !imageError ? (
               <>
                 <img
                   src={images[currentImageIndex]}
                   alt={item.name}
-                  className="max-w-full max-h-[50vh] md:max-h-[60vh] object-contain rounded-lg"
+                  className="w-full h-full lg:max-h-[70vh] max-h-[250px] object-contain rounded-lg"
                   onError={() => setImageError(true)}
                 />
                 
@@ -127,64 +127,58 @@ export default function ProductDetailModal({
             )}
           </div>
 
-          {/* Product Info - 50% */}
-          <div className="md:w-1/2 w-full p-8 flex flex-col justify-between bg-white">
-            <div className="space-y-6">
+          {/* Product Info - Takes less space */}
+          <div className="lg:w-[35%] w-full p-6 flex flex-col bg-white border-l overflow-y-auto">
+            <div className="space-y-4">
               {/* Badges */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap gap-2">
                 {item.is_featured && (
-                  <Badge variant="secondary" className="text-sm px-3 py-1">Destacado</Badge>
+                  <Badge variant="secondary">Destacado</Badge>
                 )}
                 {stockStatus && (
-                  <Badge variant={stockStatus.color as any} className="text-sm px-3 py-1">{stockStatus.text}</Badge>
+                  <Badge variant={stockStatus.color as any}>{stockStatus.text}</Badge>
                 )}
-                <Badge variant="outline" className="text-sm px-3 py-1">
+                <Badge variant="outline">
                   {item.type === "product" ? "📦 Producto" : "🔧 Servicio"}
                 </Badge>
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-gray-900">
+              <div>
+                <span className="text-3xl font-bold text-gray-900">
                   {formatPrice(item.price)}
                 </span>
                 {item.currency !== 'VES' && (
-                  <span className="text-lg text-gray-500">{item.currency}</span>
+                  <span className="text-sm text-gray-500 ml-2">{item.currency}</span>
                 )}
               </div>
 
               {/* Description */}
               {item.description && (
-                <p className="text-gray-600 text-lg leading-relaxed">{item.description}</p>
+                <p className="text-gray-600">{item.description}</p>
               )}
 
-              {/* Stock info */}
-              <div className="space-y-2 text-base text-gray-500">
+              {/* Stock */}
+              <div className="text-sm text-gray-500 space-y-1">
                 {item.track_stock && (
-                  <p className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Stock disponible:</span> 
-                    <span>{item.stock_quantity} unidades</span>
-                  </p>
+                  <p>Stock: {item.stock_quantity} unidades</p>
                 )}
                 {item.total_sold > 0 && (
-                  <p className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Vendidos:</span> 
-                    <span>{item.total_sold}</span>
-                  </p>
+                  <p>{item.total_sold} vendidos</p>
                 )}
               </div>
             </div>
 
             {/* Button */}
-            <div className="pt-8">
+            <div className="pt-6 mt-auto">
               <Button
                 onClick={() => onAddToCart(item)}
                 disabled={stockStatus?.text === "Agotado" || isInCart}
-                className="w-full h-14 text-lg font-semibold"
+                className="w-full h-12"
               >
               <ShoppingCart className="h-5 w-5 mr-2" />
                 {isInCart 
-                  ? "✓ En el carrito" 
+                  ? "✓ En carrito" 
                   : stockStatus?.text === "Agotado" 
                     ? "Agotado" 
                     : "Agregar al carrito"
