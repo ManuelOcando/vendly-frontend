@@ -10,7 +10,12 @@ interface StorePageProps {
 }
 
 export default async function StorePage({ params }: StorePageProps) {
-  const { slug } = params
+  // Next.js 15+ params is async
+  const { slug } = await params
+  
+  if (!slug) {
+    notFound()
+  }
   
   try {
     // Obtener datos de la tienda en paralelo
