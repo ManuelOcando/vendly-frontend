@@ -37,10 +37,14 @@ export default function DashboardPage() {
             }).catch(() => null)
           ])
           
+          console.log("Tenant data received:", tenantData)
           setStats(statsData)
           setWhatsappStatus(whatsappData)
           if (tenantData?.slug) {
+            console.log("Setting tenant slug:", tenantData.slug)
             setTenantSlug(tenantData.slug)
+          } else {
+            console.warn("No slug found in tenant data:", tenantData)
           }
         }
       } catch (e: any) {
