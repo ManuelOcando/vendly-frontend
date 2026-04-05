@@ -63,16 +63,16 @@ export default function ProductDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] overflow-hidden p-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="flex items-center justify-between text-xl">
             <span>{item.name}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-[1.2fr_1fr] gap-0 overflow-hidden">
           {/* Image Carousel */}
-          <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+          <div className="relative bg-gray-100 md:h-[70vh] h-[50vh]">
             {images.length > 0 && !imageError ? (
               <>
                 <img
@@ -130,7 +130,7 @@ export default function ProductDetailModal({
           </div>
 
           {/* Product Info */}
-          <div className="space-y-4">
+          <div className="space-y-6 p-6 overflow-y-auto max-h-[70vh]">
             <div className="flex items-center gap-2">
               {item.is_featured && (
                 <Badge variant="secondary">Destacado</Badge>
@@ -168,7 +168,7 @@ export default function ProductDetailModal({
             <Button
               onClick={() => onAddToCart(item)}
               disabled={stockStatus?.text === "Agotado" || isInCart}
-              className="w-full"
+              className="w-full py-6 text-lg"
               size="lg"
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
