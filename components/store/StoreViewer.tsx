@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { Store, StoreItem, Category } from "@/lib/store-service"
 import StoreItemCard from "./StoreItemCard"
+import ProductDetailModal from "./ProductDetailModal"
 import { useCart } from "@/components/storefront/CartContext"
 import CartDrawer from "@/components/storefront/CartDrawer"
 
@@ -26,8 +27,10 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("featured")
+  const { addItem, itemCount, setIsOpen, items: cartItems } = useCart()
   const { toast } = useToast()
-  const { addItem, itemCount, setIsOpen } = useCart()
+  const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Filtrar y ordenar items
   useEffect(() => {
@@ -82,6 +85,15 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
       title: "Producto agregado",
       description: `${item.name} se ha agregado al carrito`,
     })
+  }
+
+  const handleItemClick = (item: StoreItem) => {
+    setSelectedItem(item)
+    setIsModalOpen(true)
+  }
+
+  const isInCart = (itemId: string) => {
+    return cartItems.some(item => item.id === itemId)
   }
 
   return (
@@ -198,8 +210,8 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
               <StoreItemCard
                 key={item.id}
                 item={item}
-                onAddToCart={handleAddToCart}
-                isInCart={false}
+                onClick={() => handleItemClick(item)}
+                isInCart={isInCart(item.id)}
               />
             ))}
           </div>
@@ -217,6 +229,15 @@ export default function StoreViewer({ store, initialItems, categories, slug }: S
           </div>
         )}
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        item={selectedItem}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddToCart={handleAddToCart}
+        isInCart={selectedItem ? isInCart(selectedItem.id) : false}
+      />
     </div>
   )
 }

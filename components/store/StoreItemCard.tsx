@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ShoppingCart, Star, Heart, Package } from "lucide-react"
+import { Star, Heart, Package, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,22 +9,13 @@ import { StoreItem } from "@/lib/store-service"
 
 interface StoreItemCardProps {
   item: StoreItem
-  onAddToCart: (item: StoreItem) => void
+  onClick: () => void
   isInCart: boolean
 }
 
-export default function StoreItemCard({ item, onAddToCart, isInCart }: StoreItemCardProps) {
+export default function StoreItemCard({ item, onClick, isInCart }: StoreItemCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [imageError, setImageError] = useState(false)
-
-  const handleAddToCart = () => {
-    onAddToCart(item)
-  }
-
-  const toggleLike = () => {
-    setIsLiked(!isLiked)
-    // TODO: Implementar like en backend
-  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-VE', {
@@ -46,9 +37,13 @@ export default function StoreItemCard({ item, onAddToCart, isInCart }: StoreItem
   }
 
   const stockStatus = getStockStatus()
+  const hasMultipleImages = item.images && item.images.length > 1
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200">
+    <Card 
+      className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 cursor-pointer overflow-hidden"
+      onClick={onClick}
+    >
       <CardHeader className="p-0">
         <div className="relative">
           {/* Imagen del producto */}
@@ -81,15 +76,12 @@ export default function StoreItemCard({ item, onAddToCart, isInCart }: StoreItem
             )}
           </div>
 
-          {/* Botón de like */}
-          <button
-            onClick={toggleLike}
-            className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-          >
-            <Heart
-              className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
-            />
-          </button>
+          {/* Multiple Images Indicator */}
+          {hasMultipleImages && (
+            <div className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-md">
+              <ImageIcon className="h-4 w-4 text-white" />
+            </div>
+          )}
         </div>
       </CardHeader>
 
@@ -135,15 +127,17 @@ export default function StoreItemCard({ item, onAddToCart, isInCart }: StoreItem
         </div>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-3 pt-0">
         <Button
-          onClick={handleAddToCart}
           disabled={stockStatus?.text === "Agotado" || isInCart}
           className="w-full"
-          variant={isInCart ? "secondary" : "default"}
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
         >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          {isInCart ? "En el carrito" : stockStatus?.text === "Agotado" ? "Agotado" : "Agregar"}
+          {isInCart ? "En el carrito" : stockStatus?.text === "Agotado" ? "Agotado" : "Ver detalles"}
         </Button>
       </CardFooter>
     </Card>
