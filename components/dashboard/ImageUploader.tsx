@@ -87,7 +87,8 @@ export default function ImageUploader({
       )
 
       if (!response.ok) {
-        throw new Error("Error subiendo imágenes")
+        const errorData = await response.json().catch(() => ({ detail: "Error desconocido" }))
+        throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
@@ -98,9 +99,9 @@ export default function ImageUploader({
       if (data.errors?.length > 0) {
         console.warn("Errores de upload:", data.errors)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading images:", error)
-      alert("Error subiendo imágenes. Intenta de nuevo.")
+      alert(`Error subiendo imágenes: ${error.message || "Intenta de nuevo"}`)
     } finally {
       setUploading(false)
     }
