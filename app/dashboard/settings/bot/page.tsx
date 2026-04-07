@@ -13,9 +13,9 @@ import { createClient } from "@/lib/supabase/client"
 
 interface WhatsAppConfig {
   id: string
-  evolution_api_url: string
-  evolution_api_key: string
-  instance_name: string
+  phone_number_id: string
+  access_token: string
+  business_account_id: string | null
   phone_number: string | null
   is_connected: boolean
   created_at: string
@@ -23,10 +23,9 @@ interface WhatsAppConfig {
 
 interface HealthStatus {
   configured: boolean
-  bot_status: string
-  needs_qr: boolean
-  evolution_api?: { status: string }
-  whatsapp_connection?: { state: string }
+  connected: boolean
+  status?: string
+  app_name?: string
 }
 
 export default function WhatsAppSettingsPage() {
@@ -39,9 +38,9 @@ export default function WhatsAppSettingsPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    evolution_api_url: "",
-    evolution_api_key: "",
-    instance_name: "vendly-bot",
+    phone_number_id: "",
+    access_token: "",
+    business_account_id: "",
     phone_number: ""
   })
 
@@ -79,9 +78,9 @@ export default function WhatsAppSettingsPage() {
         
         if (data.config) {
           setFormData({
-            evolution_api_url: data.config.evolution_api_url,
-            evolution_api_key: data.config.evolution_api_key,
-            instance_name: data.config.instance_name,
+            phone_number_id: data.config.phone_number_id || "",
+            access_token: "", // No devolver el token completo por seguridad
+            business_account_id: data.config.business_account_id || "",
             phone_number: data.config.phone_number || ""
           })
         }
@@ -109,7 +108,12 @@ export default function WhatsAppSettingsPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.access_token}`
           },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({
+            phone_number_id: formData.phone_number_id,
+            access_token: formData.access_token,
+            business_account_id: formData.business_account_id,
+            phone_number: formData.phone_number
+          })
         }
       )
 
@@ -124,31 +128,6 @@ export default function WhatsAppSettingsPage() {
       setMessage({ type: "error", text: "Error de conexión" })
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  async function getQRCode() {
-    try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/whatsapp/qr`,
-        {
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`
-          }
-        }
-      )
-
-      if (response.ok) {
-        const data = await response.json()
-        setQrCode(data.qr_base64)
-      } else {
-        setMessage({ type: "error", text: "No se pudo obtener el QR. Verifica que el bot esté configurado." })
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: "Error obteniendo QR" })
     }
   }
 
@@ -168,13 +147,13 @@ export default function WhatsAppSettingsPage() {
         </p>
       </div>
 
-      {/* Railway Free Notice */}
+      {/* Meta API Notice */}
       <Alert className="mb-6 border-blue-200 bg-blue-50">
         <Info className="h-4 w-4 text-blue-600" />
-        <AlertTitle className="text-blue-800">Plan Gratuito de Railway</AlertTitle>
+        <AlertTitle className="text-blue-800">Meta WhatsApp Business API</AlertTitle>
         <AlertDescription className="text-blue-700">
-          Cada cliente debe crear su propia cuenta en Railway Free (500 horas/mes ≈ 16 horas/día).
-          Esto cubre horario comercial. Para 24/7, considera el plan Starter ($5/mes).
+          Usa la API oficial de Meta para WhatsApp. Necesitas una cuenta de Meta Business verificada.
+          Sin QR, sin hosting - solo credenciales de API.
         </AlertDescription>
       </Alert>
 
@@ -200,7 +179,7 @@ export default function WhatsAppSettingsPage() {
             <CardTitle className="flex items-center gap-2">
               Estado del Bot
               {health.configured ? (
-                health.bot_status === "connected" ? (
+                health.connected ? (
                   <Badge className="bg-green-100 text-green-800">Conectado</Badge>
                 ) : (
                   <Badge variant="secondary">Desconectado</Badge>
@@ -213,38 +192,17 @@ export default function WhatsAppSettingsPage() {
           <CardContent>
             {!health.configured ? (
               <p className="text-muted-foreground">
-                WhatsApp no está configurado. Sigue la guía de abajo para configurar tu bot.
+                WhatsApp no está configurado. Introduce tus credenciales de Meta API.
               </p>
-            ) : health.needs_qr ? (
-              <div className="space-y-4">
-                <p className="text-amber-600">
-                  El bot está online pero necesita autenticación. Escanea el QR con WhatsApp.
-                </p>
-                <Button onClick={getQRCode} variant="outline">
-                  Obtener Código QR
-                </Button>
-                {qrCode && (
-                  <div className="mt-4 p-4 bg-white rounded-lg inline-block">
-                    <img 
-                      src={`data:image/png;base64,${qrCode}`} 
-                      alt="WhatsApp QR Code"
-                      className="w-64 h-64"
-                    />
-                    <p className="text-sm text-center text-muted-foreground mt-2">
-                      Escanea con WhatsApp → Ajustes → Dispositivos vinculados
-                    </p>
-                  </div>
-                )}
-              </div>
             ) : (
               <div className="space-y-2 text-sm">
                 <p className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  Evolution API: {health.evolution_api?.status || "unknown"}
+                  Meta API: {health.status || "online"}
                 </p>
                 <p className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  WhatsApp: {health.whatsapp_connection?.state || "unknown"}
+                  App: {health.app_name || "Vendly"}
                 </p>
               </div>
             )}
@@ -255,48 +213,49 @@ export default function WhatsAppSettingsPage() {
       {/* Configuration Form */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Configuración del Bot</CardTitle>
+          <CardTitle>Credenciales de Meta API</CardTitle>
           <CardDescription>
-            Introduce los datos de tu instancia de Evolution API en Railway
+            Configura tu número de WhatsApp Business con Meta API
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="url">URL del Bot (Railway)</Label>
+            <Label htmlFor="phone_number_id">Phone Number ID</Label>
             <Input
-              id="url"
-              placeholder="https://tu-bot.up.railway.app"
-              value={formData.evolution_api_url}
-              onChange={(e) => setFormData({ ...formData, evolution_api_url: e.target.value })}
+              id="phone_number_id"
+              placeholder="123456789012345"
+              value={formData.phone_number_id}
+              onChange={(e) => setFormData({ ...formData, phone_number_id: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              La URL que Railway te proporcionó al hacer deploy
+              Lo encuentras en Meta Business → WhatsApp → API Setup
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="apikey">API Key</Label>
+            <Label htmlFor="access_token">Access Token (System User)</Label>
             <Input
-              id="apikey"
+              id="access_token"
               type="password"
-              placeholder="tu-api-key-segura"
-              value={formData.evolution_api_key}
-              onChange={(e) => setFormData({ ...formData, evolution_api_key: e.target.value })}
+              placeholder="EAAB..."
+              value={formData.access_token}
+              onChange={(e) => setFormData({ ...formData, access_token: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              La AUTHENTICATION_API_KEY que configuraste en Railway
+              Crea un System User en Meta Business → Generar Token con permisos: whatsapp_business_messaging
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="instance">Nombre de Instancia</Label>
+            <Label htmlFor="business_account_id">Business Account ID (opcional)</Label>
             <Input
-              id="instance"
-              value={formData.instance_name}
-              onChange={(e) => setFormData({ ...formData, instance_name: e.target.value })}
+              id="business_account_id"
+              placeholder="987654321098765"
+              value={formData.business_account_id}
+              onChange={(e) => setFormData({ ...formData, business_account_id: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Debe coincidir con el nombre en tu configuración de Railway
+              Requerido solo para gestionar plantillas
             </p>
           </div>
 
@@ -309,7 +268,7 @@ export default function WhatsAppSettingsPage() {
               onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Tu número de WhatsApp con código de país (58 para Venezuela)
+              Tu número registrado en WhatsApp Business (con código de país)
             </p>
           </div>
 
@@ -328,54 +287,50 @@ export default function WhatsAppSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ExternalLink className="h-5 w-5" />
-            Guía de Configuración
+            Guía de Configuración Meta
           </CardTitle>
           <CardDescription>
-            Sigue estos pasos para configurar tu bot en Railway
+            Sigue estos pasos para configurar WhatsApp Business API
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="space-y-3 text-sm list-decimal list-inside">
             <li>
-              Crea una cuenta gratuita en{" "}
+              Crea una cuenta en{" "}
               <a 
-                href="https://railway.app" 
+                href="https://business.facebook.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
-                Railway
+                Meta Business
               </a>
             </li>
-            <li>Haz fork del repositorio{" "}
+            <li>
+              Registra tu app en{" "}
               <a 
-                href="https://github.com/EvolutionAPI/evolution-api" 
+                href="https://developers.facebook.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
-                Evolution API
+                Meta for Developers
               </a>
             </li>
-            <li>En Railway: New Project → Deploy from GitHub → Selecciona tu fork</li>
-            <li>Configura las variables de entorno (ver guía completa)</li>
-            <li>Añade un volumen persistente en /data</li>
-            <li>Copia la URL de Railway y pégala arriba en "URL del Bot"</li>
-            <li>Genera una API key segura y guárdala en Railway y aquí</li>
-            <li>Haz clic en "Obtener Código QR" y escanéalo con WhatsApp</li>
+            <li>Añade el producto "WhatsApp" a tu app</li>
+            <li>Verifica tu número de teléfono de WhatsApp Business</li>
+            <li>En Meta Business → WhatsApp → API Setup, copia el "Phone Number ID"</li>
+            <li>Crea un System User con permiso "whatsapp_business_messaging"</li>
+            <li>Genera un Access Token permanente para el System User</li>
+            <li>Pega los datos arriba y guarda</li>
           </ol>
           
           <Separator className="my-4" />
           
           <p className="text-xs text-muted-foreground">
-            Guía completa disponible en:{" "}
-            <a 
-              href="/docs/whatsapp-setup.md" 
-              target="_blank"
-              className="text-blue-600 hover:underline"
-            >
-              whatsapp-setup.md
-            </a>
+            <strong>Costos:</strong> 1000 conversaciones/mes gratis, luego ~$0.005-0.08 por mensaje según país.
+            <br />
+            <strong>Webhook:</strong> Configura en Meta: https://vendly-backend-uuos.onrender.com/webhook/whatsapp
           </p>
         </CardContent>
       </Card>
